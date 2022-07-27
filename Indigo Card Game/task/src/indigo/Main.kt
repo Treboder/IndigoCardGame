@@ -24,6 +24,7 @@ fun main() {
                         human.getSixNewCardsFromDeckIfHandIsEmpty()
                 }
                 else { // computers turn
+                        computer.printHand()
                         computer.throwCardFromHandToStaple()
                         println("Computer plays ${Table.staple.last()}")
                         computer.getSixNewCardsFromDeckIfHandIsEmpty()
@@ -121,6 +122,10 @@ object Table {
                 return deck.size == 0
         }
 
+        fun stapleIsEmpty():Boolean {
+                return staple.size == 0
+        }
+
         fun dealRandomCardsFromDeck(numberOfCardsToGet:Int): MutableList<Card> {
                 val rnd = Random
                 val selectedCards = mutableListOf<Card>()
@@ -145,6 +150,7 @@ object Table {
                 if(staple.size == 1) return false // first card in that round
                 val previousCard = staple[staple.size-2]
                 return staple.last().rank == previousCard.rank || staple.last().suit == previousCard.suit
+                // ToDo: replace with Card.winsWith()
         }
 
         fun printInitialTableStatus() {
@@ -223,6 +229,7 @@ open class Player {
 
         }
 }
+
 class Human(): Player() {
 
         private var chosenCardIndexForNextMove = 0
@@ -249,7 +256,6 @@ class Human(): Player() {
                 return chosenCardIndexForNextMove
         }
 
-
         override fun throwCardFromHandToStaple() {
                 Table.staple.add(currentHand[chosenCardIndexForNextMove-1])
                 currentHand.removeAt(chosenCardIndexForNextMove-1)
@@ -260,10 +266,128 @@ class Human(): Player() {
 
 class Computer: Player() {
 
+        fun throwCard(card:Card) {
+                Table.staple.add(card)
+                currentHand.remove(card)
+        }
+
+        fun printHand() {
+                for(card in currentHand)
+                        print("$card ") // calls overridden toString()
+                println()
+        }
+
         override fun throwCardFromHandToStaple() {
-                Table.staple.add(currentHand.first())
-                currentHand.removeFirst()
+
+                val candidates = getCandidateCards()
+                val sameSuitsFromHand = getCardsWithTheSameSuitFrom(currentHand)
+                val sameRanksFromHand = getCardsWithTheSameRankFrom(currentHand)
+                val sameSuitsFromCandidates = getCardsWithTheSameSuitFrom(candidates)
+                val sameRanksFromCandidates = getCardsWithTheSameRankFrom(candidates)
+
+                // 1) If there is only one card in hand, put it on the table
+                if(currentHand.size == 1)
+                        throwCard(currentHand.first())
+                // 2) If there is only one candidate card, put it on the table
+                else if(candidates.size == 1)
+                        throwCard(candidates.first())
+                // 3) If there are no cards on the table:
+                else if(Table.stapleIsEmpty()) {
+                        if(sameSuitsFromHand.size > 0)
+                                throwCard(sameSuitsFromHand.first())
+                        else if(sameRanksFromHand.size > 0)
+                                throwCard(sameRanksFromHand.first())
+                        else
+                                throwCard(currentHand.first())
+                }
+                // 4) If there are cards on the table but no candidate cards, use the same tactics as in step 3.
+                else if(!Table.stapleIsEmpty() && candidates.size == 0) {
+                        if(sameSuitsFromHand.size > 0)
+                                throwCard(sameSuitsFromHand.first())
+                        else if(sameRanksFromHand.size > 0)
+                                throwCard(sameRanksFromHand.first())
+                        else
+                                throwCard(currentHand.first())
+                }
+                // 5) If there are two or more candidate cards:
+                else if(candidates.size >= 2) {
+                        if(sameSuitsFromCandidates.size >= 2)
+                                throwCard(sameSuitsFromCandidates.first())
+                        else if(sameRanksFromCandidates.size >= 2)
+                                throwCard(sameRanksFromCandidates.first())
+                        else
+                                throwCard(candidates.first())
+                }
                 Table.round++
+        }
+
+        fun getCandidateCards():MutableList<Card> {
+                val myCandidates = mutableListOf<Card>()
+                if(Table.staple.size >=1)
+                        for(cardFromHand in currentHand)
+                                if(cardFromHand.winsWith(Table.staple.last()) && !myCandidates.contains(cardFromHand))
+                                        myCandidates.add(cardFromHand)
+                return myCandidates
+        }
+
+        fun getCardsWithTheSameSuitFrom(cardList:MutableList<Card>):MutableList<Card> {
+                val sameSuitCards = mutableListOf<Card>()
+                val clubs = getCardsWithSuitFrom(SUITS.CLUB, cardList)
+                val spades = getCardsWithSuitFrom(SUITS.SPADE, cardList)
+                val diamonds = getCardsWithSuitFrom(SUITS.DIAMOND, cardList)
+                val hearts = getCardsWithSuitFrom(SUITS.HEART, cardList)
+                if(clubs.size > 1) sameSuitCards.addAll(clubs)
+                if(spades.size > 1) sameSuitCards.addAll(spades)
+                if(diamonds.size > 1) sameSuitCards.addAll(diamonds)
+                if(hearts.size > 1) sameSuitCards.addAll(hearts)
+                return sameSuitCards
+        }
+
+        fun getCardsWithTheSameRankFrom(cardList:MutableList<Card>):MutableList<Card> {
+                val sameRankCards = mutableListOf<Card>()
+                val aces = getCardsWithRankFrom(RANKS.ACE, cardList)
+                val twos = getCardsWithRankFrom(RANKS.TWO, cardList)
+                val threes = getCardsWithRankFrom(RANKS.THREE, cardList)
+                val fours = getCardsWithRankFrom(RANKS.FOUR, cardList)
+                val fives = getCardsWithRankFrom(RANKS.FIVE, cardList)
+                val sixes = getCardsWithRankFrom(RANKS.SIX, cardList)
+                val sevens = getCardsWithRankFrom(RANKS.SEVEN, cardList)
+                val eights = getCardsWithRankFrom(RANKS.EIGHT, cardList)
+                val nines = getCardsWithRankFrom(RANKS.NINE, cardList)
+                val tens = getCardsWithRankFrom(RANKS.TEN, cardList)
+                val jacks = getCardsWithRankFrom(RANKS.JACK, cardList)
+                val queens = getCardsWithRankFrom(RANKS.QUEEN, cardList)
+                val kings = getCardsWithRankFrom(RANKS.KING, cardList)
+                if(aces.size > 1) sameRankCards.addAll(aces)
+                if(twos.size > 1) sameRankCards.addAll(twos)
+                if(threes.size > 1) sameRankCards.addAll(threes)
+                if(fours.size > 1) sameRankCards.addAll(fours)
+                if(fives.size > 1) sameRankCards.addAll(fives)
+                if(sixes.size > 1) sameRankCards.addAll(sixes)
+                if(sevens.size > 1) sameRankCards.addAll(sevens)
+                if(eights.size > 1) sameRankCards.addAll(eights)
+                if(nines.size > 1) sameRankCards.addAll(nines)
+                if(tens.size > 1) sameRankCards.addAll(tens)
+                if(jacks.size > 1) sameRankCards.addAll(jacks)
+                if(queens.size > 1) sameRankCards.addAll(queens)
+                if(kings.size > 1) sameRankCards.addAll(kings)
+                return sameRankCards
+        }
+
+        fun getCardsWithSuitFrom(suit:SUITS, cardList:MutableList<Card>):MutableList<Card> {
+                val result = mutableListOf<Card>()
+                for(card in cardList)
+                        if(card.suit == suit)
+                                result.add(card)
+                return result
+        }
+
+        fun getCardsWithRankFrom(rank:RANKS, cardList:MutableList<Card>):MutableList<Card> {
+                val result = mutableListOf<Card>()
+                for(card in cardList)
+                        if(card.rank == rank)
+                                result.add(card)
+                return result
         }
 
 }
@@ -272,6 +396,11 @@ class Card(var suit: SUITS, var rank: RANKS) {
 
         override fun toString():String {
                 return "${rank.Symbol}${suit.Symbol}"
+        }
+
+        fun winsWith(other:Card):Boolean {
+                var result = this.rank == other.rank || this.suit == other.suit
+                return result
         }
 
         // ToDo fun sameRankAs(otherCard:Card) {}
